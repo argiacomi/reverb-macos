@@ -374,11 +374,20 @@ def _protoc_archive(ctx):
     version = ctx.attr.version
     sha256 = ctx.attr.sha256
 
-    urls = [
-        "https://github.com/protocolbuffers/protobuf/releases/download/v%s/protoc-%s-osx-aarch_64.zip" % (version, version),
-    ]
+    url = select({
+        "//third_party:linux-aarch_64": "linux-aarch_64",
+        "//third_party:linux-ppcle_64": "linux-ppcle_64",
+        "//third_party:linux-s390_64": "linux-s390_64",
+        "//third_party:linux-x86_32": "linux-x86_32",
+        "//third_party:linux-x86_64": "linux-x86_64",
+        "//third_party:osx-aarch_64": "osx-aarch_64",
+        "//third_party:osx-x86_64": "osx-x86_64",
+        "//third_party:win32": "win32",
+        "//third_party:win64": "win64",
+      })
+
     ctx.download_and_extract(
-        url = urls,
+        url = ["https://github.com/protocolbuffers/protobuf/releases/download/v%s/protoc-%s-%s.zip" % (version, version, url)],
         sha256 = sha256,
     )
 
@@ -404,3 +413,5 @@ protoc_archive = repository_rule(
 
 def protoc_deps(version, sha256):
     protoc_archive(name = "protobuf_protoc", version = version, sha256 = sha256)
+
+
