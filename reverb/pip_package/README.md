@@ -112,7 +112,7 @@ $ docker run --rm -it \
 
 ```shell
 $ python3.8 configure.py
-$ bazel build -c opt //reverb/pip_package:build_pip_package
+$ bazel build --config=macos_arm64 //reverb/pip_package:build_pip_package
 ```
 
 1. Build the .whl file and output it to `/tmp/reverb_build/dist/`.
