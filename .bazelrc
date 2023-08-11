@@ -1,32 +1,58 @@
+# Make Bazel print out all options from rc files.
+build --announce_rc
+
 # gRPC using libcares in opensource has some issues.
 build --define=grpc_no_ares=true
 
+# Bazel picks up host-OS-specific config lines from bazelrc files, e.g.,
+#if the host OS is macos, bazel build picks up lines starting with build:macos.
+build --enable_platform_specific_config
+
+# build --config=short_logs
+
 # Suppress all warning messages.
-build:short_logs --output_filter=DONT_MATCH_ANYTHING
+build: --output_filter=DONT_MATCH_ANYTHING
 
 # Force python3
 build --action_env=PYTHON_BIN_PATH=python3
 build --repo_env=PYTHON_BIN_PATH=python3
 build --python_path=python3
 
-build:manylinux2014 --crosstool_top=//third_party/toolchains/preconfig/ubuntu16.04/gcc7_manylinux2014:toolchain
+# Default options above this line.
 
-build -c opt
-build --cxxopt="-std=c++17"
-build --host_cxxopt="-std=c++17"
-# We can remove this flag (we keep it explicit for now)
-build --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=1"
-build --host_cxxopt="-D_GLIBCXX_USE_CXX11_ABI=1"
-build --auto_output_filter=subpackages
-build --copt="-Wall" --copt="-Wno-sign-compare"
-build --linkopt="-lrt -lm"
-# We build with AVX and eigen byte alignment to match tensorflow's (and Eigen)
-# pip package byte alignment.  See b/186669968 for more details.
-build --copt=-mavx --copt=-DEIGEN_MAX_ALIGN_BYTES=64
+# Sets the default Apple platform to macOS.
+build:macos --apple_platform_type=macos
+
+# gRPC on MacOS requires this #define
+build:macos --copt=-DGRPC_BAZEL_BUILD
+
+# Settings for MacOS on ARM CPUs.
+build:macos_arm64 --cpu=darwin_arm64
+build:macos_arm64 --macos_minimum_os=11.0
+
+# Debug config
+build:dbg -c "dbg"
+build:dbg --copt "-DDEBUG_BUILD"
 
 # TF isn't built in dbg mode, so our dbg builds will segfault due to inconsistency
 # of defines when using tf's headers.  In particular in refcount.h.
-build --cxxopt="-DNDEBUG"
+build:macos --cxxopt="-DNDEBUG"
+
+# Suppress all C++ compiler warnings.
+build:macos --copt="-Wall" --copt="-Wno-sign-compare"
+
+# By default, build in C++ 17 mode.
+build:macos --cxxopt="-std=c++17"
+build:macos --host_cxxopt="-std=c++17"
+
+# We can remove this flag (we keep it explicit for now)
+build:macos --cxxopt="-D_GLIBCXX_USE_CXX11_ABI=1"
+build:macos --host_cxxopt="-D_GLIBCXX_USE_CXX11_ABI=1"
+build:macos --auto_output_filter=subpackages
+
+# We build eigen byte alignment to match tensorflow's (and Eigen)
+# pip package byte alignment.  See b/186669968 for more details.
+build:macos --copt="-DEIGEN_MAX_ALIGN_BYTES=64"
 
 # Options from ./configure
 try-import %workspace%/.reverb.bazelrc

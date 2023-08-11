@@ -8,8 +8,8 @@ workspace(name = "reverb")
 #     curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" | sha256sum
 #  3. Update the two variables below.
 #
-PROTOC_VERSION = "21.0"
-PROTOC_SHA256 = "a2a92003da7b8c0c08aab530a3c1967d377c2777723482adb9d2eb38c87a9d5f"
+PROTOC_VERSION = "21.9"
+PROTOC_SHA256 = "d935f396a05cb02d4a1338db181c78f47884466a9f57d5ed4b7a4811816b69cf"
 
 load(
     "//reverb/cc/platform/default:repo.bzl",

@@ -110,7 +110,6 @@ def _get_input(question):
     answer = ''
   return answer
 
-
 def setup_python(environ_cp, force_defaults: bool):
   """Setup python related env variables.
 
@@ -159,18 +158,22 @@ def setup_python(environ_cp, force_defaults: bool):
         print(f'Using Python lib {default_python_lib_path}')
       else:
         python_lib_path = _get_input(
-            'Please input the desired Python library path to use.  '
-            'Default is [%s]\n' % default_python_lib_path)
+            'Please specify the desired Python library path to use.  '
+            '[Default is %s]: ' % default_python_lib_path)
         if not python_lib_path:
           python_lib_path = default_python_lib_path
     environ_cp['PYTHON_LIB_PATH'] = python_lib_path
 
   # Set-up env variables used by python_configure.bzl
+  print('\nWriting the following Env Variables:')
+  print('PYTHON_BIN_PATH', python_bin_path)
+  print('PYTHON_LIB_PATH', python_lib_path)
   write_action_env_to_bazelrc('PYTHON_BIN_PATH', python_bin_path)
   write_action_env_to_bazelrc('PYTHON_LIB_PATH', python_lib_path)
   write_to_bazelrc('build --python_path=\"%s"' % python_bin_path)
   write_to_bazelrc('build --repo_env=PYTHON_BIN_PATH=\"%s"' % python_bin_path)
   environ_cp['PYTHON_BIN_PATH'] = python_bin_path
+  environ_cp['REVERB_PYTHON_VERSION'] = sys.version[:4]
 
   # If choosen python_lib_path is from a path specified in the PYTHONPATH
   # variable, need to tell bazel to include PYTHONPATH
@@ -178,6 +181,16 @@ def setup_python(environ_cp, force_defaults: bool):
     python_paths = environ_cp.get('PYTHONPATH').split(':')
     if python_lib_path in python_paths:
       write_action_env_to_bazelrc('PYTHONPATH', environ_cp.get('PYTHONPATH'))
+
+  # Setup python packages for running/testing Reverb.
+  print('\nInstalling the following python packages for testing:')
+  required_packages = ["tensorflow", "dm-tree", "portpicker"]
+  for package_name in required_packages:
+    print(f"{package_name}")
+
+  for package_name in required_packages:
+    print(f"\n==========Installing {package_name}==========")
+    subprocess.run([python_bin_path, "-m", "pip", "install", package_name])
 
   # Write tools/python_bin_path.sh
   with open(os.path.join(_REVERB_WORKSPACE_ROOT, 'python_bin_path.sh'),

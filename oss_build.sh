@@ -26,7 +26,7 @@ set -e
 set -o pipefail
 
 # Flags
-PYTHON_VERSIONS=3.9 # Options 3.9 (default), 3.8, 3.10 or 3.11.
+PYTHON_VERSIONS=3.10 # Options 3.9 (default), 3.8, 3.10 or 3.11.
 CLEAN=false # Set to true to run bazel clean.
 CLEAR_CACHE=false # Set to true to delete Bazel cache folder. b/279235134
 OUTPUT_DIR=/tmp/reverb/dist/

@@ -29,6 +29,12 @@ py_test() {
 
   echo "===========Running Python tests============"
 
+  # Install the necessary packages using pip
+  ${PYTHON_BIN_PATH} -m pip install --upgrade pip
+  ${PYTHON_BIN_PATH} -m pip install tensorflow
+  ${PYTHON_BIN_PATH} -m pip install dm-tree
+  ${PYTHON_BIN_PATH} -m pip install portpicker
+
   for test_file in `find reverb/ -name '*_test.py' -print`
   do
     echo "####=======Testing ${test_file}=======####"

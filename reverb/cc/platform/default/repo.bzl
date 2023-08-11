@@ -81,21 +81,29 @@ def _find_python_solib_path(repo_ctx):
         [
             get_python_path(repo_ctx),
             "-c",
-            "import sys; vi = sys.version_info; " +
+            "import sysconfig; import sys;" +
+            "vi = sys.version_info; " +
             "sys.stdout.write('python{}.{}'.format(vi.major, vi.minor))",
         ],
     )
     if exec_result.return_code != 0:
-        fail("Could not locate python shared library path:\n{}"
+        fail("1. Could not locate python shared library path:\n{}"
             .format(exec_result.stderr))
     version = exec_result.stdout.splitlines()[-1]
-    basename = "lib{}.so".format(version)
+    base_ext = "so"
+    if repo_ctx.os.name == "mac os x":
+        base_ext = "dylib"
+    basename = "lib{}.{}".format(version, base_ext)
     exec_result = repo_ctx.execute(
-        ["{}-config".format(version), "--configdir"],
-        quiet = True,
+        [
+            get_python_path(repo_ctx),
+            "-c",
+            "import sysconfig; import sys;" +
+            "sys.stdout.write(sysconfig.get_config_var('LIBDIR'))",
+        ],
     )
     if exec_result.return_code != 0:
-        fail("Could not locate python shared library path:\n{}"
+        fail("2. Could not locate python shared library path:\n{}"
             .format(exec_result.stderr))
     solib_dir = exec_result.stdout.splitlines()[-1]
     full_path = repo_ctx.path("{}/{}".format(solib_dir, basename))
@@ -226,7 +234,10 @@ def _tensorflow_solib_repo_impl(repo_ctx):
         content = """
 cc_library(
     name = "framework_lib",
-    srcs = ["tensorflow_solib/libtensorflow_framework.so.2"],
+    srcs = select({
+        "@platforms//os:macos": ["tensorflow_solib/libtensorflow_framework.2.dylib"],
+        "//conditions:default": ["tensorflow_solib/libtensorflow_framework.so.2"],
+    }),
     deps = ["@python_includes", "@python_includes//:numpy_includes"],
     visibility = ["//visibility:public"],
 )
@@ -333,28 +344,19 @@ def github_apple_deps():
 def github_grpc_deps():
     http_archive(
         name = "com_github_grpc_grpc",
-        patch_cmds = [
-            """sed -i.bak 's/"python",/"python3",/g' third_party/py/python_configure.bzl""",
-            """sed -i.bak 's/PYTHONHASHSEED=0/PYTHONHASHSEED=0 python3/g' bazel/cython_library.bzl""",
-        ],
-        sha256 = "39bad059a712c6415b168cb3d922cb0e8c16701b475f047426c81b46577d844b",
-        strip_prefix = "grpc-reverb_fix",
-        urls = [
-            # Patched version of GRPC / boringSSL to make it compile with old TF GCC compiler
-            # (see b/244280763 for details).
-            "https://github.com/qstanczyk/grpc/archive/reverb_fix.tar.gz",
-        ],
+        patch_args = ["-p1"],
+        patches = ["//third_party:grpc/grpcpp_test_visibility.patch"],
+        sha256 = "17e4e1b100657b88027721220cbfb694d86c4b807e9257eaf2fb2d273b41b1b1",
+        strip_prefix = "grpc-1.54.3",
+        urls = ["https://github.com/grpc/grpc/archive/refs/tags/v1.54.3.tar.gz"],
     )
 
 def googletest_deps():
     http_archive(
         name = "com_google_googletest",
-        sha256 = "ff7a82736e158c077e76188232eac77913a15dac0b22508c390ab3f88e6d6d86",
-        strip_prefix = "googletest-b6cd405286ed8635ece71c72f118e659f4ade3fb",
-        urls = [
-            "https://storage.googleapis.com/mirror.tensorflow.org/github.com/google/googletest/archive/b6cd405286ed8635ece71c72f118e659f4ade3fb.zip",
-            "https://github.com/google/googletest/archive/b6cd405286ed8635ece71c72f118e659f4ade3fb.zip",
-        ],
+        sha256 = "81964fe578e9bd7c94dfdb09c8e4d6e6759e19967e397dbea48d1c10e45d0df2",
+        strip_prefix = "googletest-release-1.12.1",
+        urls = ["https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz"],
     )
 
 def absl_deps():
@@ -373,7 +375,7 @@ def _protoc_archive(ctx):
     sha256 = ctx.attr.sha256
 
     urls = [
-        "https://github.com/protocolbuffers/protobuf/releases/download/v%s/protoc-%s-linux-x86_64.zip" % (version, version),
+        "https://github.com/protocolbuffers/protobuf/releases/download/v%s/protoc-%s-osx-aarch_64.zip" % (version, version),
     ]
     ctx.download_and_extract(
         url = urls,

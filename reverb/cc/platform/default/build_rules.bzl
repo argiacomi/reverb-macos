@@ -13,6 +13,7 @@ def reverb_cc_library(
     if testonly:
         new_deps = [
             "@com_google_googletest//:gtest",
+            "@com_google_googletest//:gtest_main",
             "@tensorflow_includes//:includes",
             "@tensorflow_solib//:framework_lib",
         ]
@@ -266,9 +267,10 @@ def reverb_cc_test(name, srcs, deps = [], **kwargs):
     new_deps = [
         "@com_github_grpc_grpc//:grpc++_test",
         "@com_google_googletest//:gtest",
+        "@com_google_googletest//:gtest_main",
         "@tensorflow_includes//:includes",
         "@tensorflow_solib//:framework_lib",
-        "@com_google_googletest//:gtest_main",
+
     ]
     size = kwargs.pop("size", "small")
     native.cc_test(
@@ -310,15 +312,23 @@ def reverb_gen_op_wrapper_py(name, out, kernel_lib, ops_lib = None, linkopts = [
     native.cc_binary(
         name = "{}.so".format(module_name),
         deps = [kernel_lib] + ([ops_lib] if ops_lib else []) + reverb_tf_deps() + [version_script_file],
-        copts = tf_copts() + [
-            "-fno-strict-aliasing",  # allow a wider range of code [aliasing] to compile.
-            "-fvisibility=hidden",  # avoid symbol clashes between DSOs.
-        ],
+        copts = tf_copts() + select({
+            "@platforms//os:macos": [
+                "-fno-strict-aliasing",  # allow a wider range of code [aliasing] to compile.
+            ],
+            "//conditions:default": [
+                "-fno-strict-aliasing",  # allow a wider range of code [aliasing] to compile.
+                "-fvisibility=hidden",  # avoid symbol clashes between DSOs.
+            ],
+        }),
         linkshared = 1,
-        linkopts = linkopts + _rpath_linkopts(module_name) + [
-            "-Wl,--version-script",
-            "$(location %s)" % version_script_file,
-        ],
+        linkopts = linkopts + _rpath_linkopts(module_name) + select({
+            "@platforms//os:macos": [],
+            "//conditions:default": [
+                "-Wl,--version-script",
+                "$(location %s)" % version_script_file,
+            ]
+        }),
         **kwargs
     )
     native.genrule(
@@ -373,7 +383,13 @@ def _rpath_linkopts(name):
     # ops) are picked up as long as they are in either the same or a parent
     # directory in the tensorflow/ tree.
     levels_to_root = native.package_name().count("/") + name.count("/")
-    return ["-Wl,%s" % (_make_search_paths("$$ORIGIN", levels_to_root),)]
+    return select({
+        "@platforms//os:macos": [
+            "-Wl,%s" % (_make_search_paths("@loader_path", levels_to_root),),
+            "-Wl,-rename_section,__TEXT,text_env,__TEXT,__text",
+        ],
+        "//conditions:default": ["-Wl,%s" % (_make_search_paths("$$ORIGIN", levels_to_root),)]
+    })
 
 def reverb_pybind_extension(
         name,
@@ -457,10 +473,16 @@ def reverb_pybind_extension(
             "-fexceptions",  # pybind relies on exceptions, required to compile.
             "-fvisibility=hidden",  # avoid pybind symbol clashes between DSOs.
         ],
-        linkopts = linkopts + _rpath_linkopts(module_name) + [
+        linkopts = linkopts + _rpath_linkopts(module_name) + select({
+        "@platforms//os:macos": [
+            "-Wl,-w",
+            "-Wl,-exported_symbols_list,$(location %s)" % exported_symbols_file,
+        ],
+        "//conditions:default": [
             "-Wl,--version-script",
             "$(location %s)" % version_script_file,
-        ],
+        ]
+    }),
         deps = depset(deps + [
             exported_symbols_file,
             version_script_file,

@@ -2,7 +2,7 @@ _CHECK_VERSION = """
 PROTOC_VERSION=$$($(location @protobuf_protoc//:protoc_bin) --version \
   | cut -d' ' -f2 | sed -e 's/\\./ /g')
 PROTOC_VERSION=$$(printf '%d%03d%03d' $${PROTOC_VERSION})
-TF_PROTO_VERSION=$$(grep '#define PROTOBUF_MIN_PROTOC_VERSION' \
+TF_PROTO_VERSION=$$(grep '#define PROTOBUF_VERSION' \
   $(location tf_includes/google/protobuf/port_def.inc) | cut -d' ' -f3)
 if [ "$${PROTOC_VERSION}" -ne "$${TF_PROTO_VERSION}" ]; then
   echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!! 1>&2

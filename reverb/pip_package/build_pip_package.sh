@@ -32,7 +32,7 @@ function build_wheel() {
   pushd ${TMPDIR} > /dev/null
 
   echo $(date) : "=== Building wheel"
-  "${PYTHON_BIN_PATH}" setup.py bdist_wheel ${PKG_NAME_FLAG} ${RELEASE_FLAG} ${TF_VERSION_FLAG} --plat manylinux2014_x86_64 > /dev/null
+  "${PYTHON_BIN_PATH}" setup.py bdist_wheel ${PKG_NAME_FLAG} ${RELEASE_FLAG} ${TF_VERSION_FLAG} > /dev/null
   DEST=${TMPDIR}/dist/
   if [[ ! "$TMPDIR" -ef "$DESTDIR" ]]; then
     mkdir -p ${DESTDIR}
@@ -41,6 +41,15 @@ function build_wheel() {
   fi
   popd > /dev/null
   echo $(date) : "=== Output wheel file is in: ${DEST}"
+}
+
+PLATFORM="$(uname -s | tr 'A-Z' 'a-z')"
+function is_macos() {
+  if [[ "${PLATFORM}" =~ darwin* ]]; then
+    true
+  else
+    false
+  fi
 }
 
 function prepare_src() {
@@ -71,6 +80,32 @@ function prepare_src() {
   # must remain where they are for TF to find them.
   find "${TMPDIR}/reverb/cc" -type d -name ops -prune -o -name '*.so' \
     -exec mv {} "${TMPDIR}/reverb" \;
+
+  if is_macos; then
+    find "${TMPDIR}/reverb/cc" -type d -name ops -prune -o -name '*.dylib' \
+      -exec mv {} "${TMPDIR}/reverb" \;
+
+
+    chmod +rw ${TMPDIR}/reverb/libcheckpoint_cc_proto.so
+    install_name_tool -change "@loader_path/../../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cschema_Ucc_Uproto___Ureverb_Scc/libschema_cc_proto.so" "@loader_path/libschema_cc_proto.so" ${TMPDIR}/reverb/libcheckpoint_cc_proto.so
+    install_name_tool -change "@loader_path/../../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cschema_Ucc_Uproto___Ureverb_Scc/libschema_cc_proto.so" "@loader_path/libschema_cc_proto.so" ${TMPDIR}/reverb/libcheckpoint_cc_proto.so
+    install_name_tool -change "@loader_path/../../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cschema_Ucc_Uproto___Ureverb_Scc/libschema_cc_proto.so" "@loader_path/libschema_cc_proto.so" ${TMPDIR}/reverb/libcheckpoint_cc_proto.so
+
+    chmod +rw ${TMPDIR}/reverb/libreverb_service_cc_proto.so
+    install_name_tool -change "@loader_path/../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cschema_Ucc_Uproto___Ureverb_Scc/libschema_cc_proto.so" "@loader_path/libschema_cc_proto.so" ${TMPDIR}/reverb/libreverb_service_cc_proto.so
+
+    chmod +rw ${TMPDIR}/reverb/libpybind.so
+    install_name_tool -change "@loader_path/../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cpatterns_Ucc_Uproto___Ureverb_Scc/libpatterns_cc_proto.so" "@loader_path/libpatterns_cc_proto.so" ${TMPDIR}/reverb/libpybind.so
+    install_name_tool -change "@loader_path/../_solib_darwin_arm64/_U_S_Sreverb_Scc_Creverb_Uservice_Ucc_Uproto___Ureverb_Scc/libreverb_service_cc_proto.so" "@loader_path/libreverb_service_cc_proto.so" ${TMPDIR}/reverb/libpybind.so
+    install_name_tool -change "@loader_path/../_solib_darwin_arm64/_U_S_Sreverb_Scc_Scheckpointing_Ccheckpoint_Ucc_Uproto___Ureverb_Scc_Scheckpointing/libcheckpoint_cc_proto.so" "@loader_path/libcheckpoint_cc_proto.so" ${TMPDIR}/reverb/libpybind.so
+    install_name_tool -change "@loader_path/../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cschema_Ucc_Uproto___Ureverb_Scc/libschema_cc_proto.so" "@loader_path/libschema_cc_proto.so" ${TMPDIR}/reverb/libpybind.so
+
+    chmod +rw ${TMPDIR}/reverb/cc/ops/libgen_reverb_ops_gen_op.so
+    install_name_tool -change "@loader_path/../../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cpatterns_Ucc_Uproto___Ureverb_Scc/libpatterns_cc_proto.so" "@loader_path/../../libpatterns_cc_proto.so" ${TMPDIR}/reverb/cc/ops/libgen_reverb_ops_gen_op.so
+    install_name_tool -change "@loader_path/../../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Creverb_Uservice_Ucc_Uproto___Ureverb_Scc/libreverb_service_cc_proto.so" "@loader_path/../../libreverb_service_cc_proto.so" ${TMPDIR}/reverb/cc/ops/libgen_reverb_ops_gen_op.so
+    install_name_tool -change "@loader_path/../../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Scheckpointing_Ccheckpoint_Ucc_Uproto___Ureverb_Scc_Scheckpointing/libcheckpoint_cc_proto.so" "@loader_path/../../libcheckpoint_cc_proto.so" ${TMPDIR}/reverb/cc/ops/libgen_reverb_ops_gen_op.so
+    install_name_tool -change "@loader_path/../../../_solib_darwin_arm64/_U_S_Sreverb_Scc_Cschema_Ucc_Uproto___Ureverb_Scc/libschema_cc_proto.so" "@loader_path/../../libschema_cc_proto.so" ${TMPDIR}/reverb/cc/ops/libgen_reverb_ops_gen_op.so
+  fi
 }
 
 function usage() {

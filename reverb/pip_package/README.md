@@ -4,9 +4,9 @@
 
 This document covers a couple scenarios:
 
- *  <a href='#Release'>Create a Reverb release</a>
- *  <a href='#Develop'>Develop Reverb inside a Docker container</a>
- *  <a href='#builds-tips-and-hints'>Build tips and hints</a>
+- <a href='#Release'>Create a Reverb release</a>
+- <a href='#Develop'>Develop Reverb inside a Docker container</a>
+- <a href='#builds-tips-and-hints'>Build tips and hints</a>
 
 While there is overlap in the above scenarios, treating them separately seems
 the most clear at the moment. Before you get started, setup a local variable
@@ -17,24 +17,25 @@ $ export REVERB_DIR=/path/to/reverb/github/repo
 ```
 
 <a id='Release'></a>
+
 ## Create a stable Reverb release
 
 There are two steps for building the Reverb package.
 
-  * Build the Docker container with the version of TensorFlow to build Reverb
-    against.
-  * Execute the build and declare any specific TensorFlow dependency for the
-    pip install. The dependency is only enforced if the user uses
-    `pip install reverb[tensorflow]`.
+- Build the Docker container with the version of TensorFlow to build Reverb
+  against.
+- Execute the build and declare any specific TensorFlow dependency for the
+  pip install. The dependency is only enforced if the user uses
+  `pip install reverb[tensorflow]`.
 
 Execute from the root of the git repository. The end result will end up in
 `$REVERB_DIR/dist`.
 
 > :warning: Bazel is caching the first version of files or a config of the first
-   version of Python used. If building reverb consecutively for different
-   versions of Python `--clear_bazel_cache true` is needed and included in
-   the commands below. Running the docker once for each python version also
-   works. This issue may resolve itself in the future.
+> version of Python used. If building reverb consecutively for different
+> versions of Python `--clear_bazel_cache true` is needed and included in
+> the commands below. Running the docker once for each python version also
+> works. This issue may resolve itself in the future.
 
 ```shell
 
@@ -46,7 +47,7 @@ Execute from the root of the git repository. The end result will end up in
 # If building against an RC, use == rather than ~= for `tensorflow_pip`.
 $ docker build --pull --no-cache \
   --tag tensorflow:reverb_release \
-  --build-arg tensorflow_pip=tensorflow~=2.12.0 \
+  --build-arg tensorflow_pip=tensorflow~=2.13.0 \
   --build-arg python_version="python3.8 python3.9 python3.10 python3.11" \
   - < "$REVERB_DIR/docker/release.dockerfile"
 
@@ -59,7 +60,7 @@ $ docker build --pull --no-cache \
 # Packages for Python 3.8, 3.9, 3.10, and 3.11 are created.
 $ docker run --rm --mount "type=bind,src=$REVERB_DIR,dst=/tmp/reverb" \
   tensorflow:reverb_release bash oss_build.sh --clean true \
-  --clear_bazel_cache true --tf_dep_override "tensorflow~=2.12.0" \
+  --clear_bazel_cache true --tf_dep_override "tensorflow~=2.13.0" \
   --release --python "3.8 3.9 3.10 3.11"
 
 # Builds Reverb against an RC of TensorFlow. `>=` and `~=` are not effective
@@ -67,7 +68,7 @@ $ docker run --rm --mount "type=bind,src=$REVERB_DIR,dst=/tmp/reverb" \
 # to have a strict dependency on the RC of TensorFlow used.
 $ docker run --rm --mount "type=bind,src=$REVERB_DIR,dst=/tmp/reverb" \
   tensorflow:reverb_release bash oss_build.sh --clean true \
-  --clear_bazel_cache true --tf_dep_override "tensorflow==2.12.0rc0" \
+  --clear_bazel_cache true --tf_dep_override "tensorflow==2.13.0rc0" \
   --release --python "3.8 3.9 3.10 3.11"
 
 # Builds a debug version of Reverb. The debug version is not labeled as debug
@@ -78,55 +79,59 @@ $ docker run --rm --mount "type=bind,src=$REVERB_DIR,dst=/tmp/reverb" \
 $ docker run --rm --mount "type=bind,src=$REVERB_DIR,dst=/tmp/reverb" \
   tensorflow:reverb_release bash oss_build.sh --clean true --debug_build true \
   --clear_bazel_cache true --output_dir /tmp/reverb/dist/debug/ \
-  --tf_dep_override "tensorflow~=2.12.0" --release --python "3.8 3.9 3.10 3.11"
+  --tf_dep_override "tensorflow~=2.13.0" --release --python "3.8 3.9 3.10 3.11"
 
 ```
 
 <a id='Develop'></a>
+
 ## Develop Reverb inside a Docker container
 
 1. Build the Docker container. By default the container is setup for python 3.9.
    Use the `python_version` arg to configure the container with 3.8 or 3.9.
 
-  ```shell
-  $ docker build --tag tensorflow:reverb - < "$REVERB_DIR/docker/release.dockerfile"
+```shell
+$ docker build --tag tensorflow:reverb - < "$REVERB_DIR/docker/release.dockerfile"
 
-  # Alternatively you can build the container with Python 3.8 support.
-  $ docker build --tag tensorflow:reverb \
-      --build-arg python_version=python3.8 \
-      - < "$REVERB_DIR/docker/release.dockerfile"
-  ```
+# Alternatively you can build the container with Python 3.8 support.
+$ docker build --tag tensorflow:reverb \
+    --build-arg python_version=python3.8 \
+    - < "$REVERB_DIR/docker/release.dockerfile"
+```
 
 1. Run and enter the Docker container.
 
-  ```shell
-  $ docker run --rm -it \
-    --mount "type=bind,src=$REVERB_DIR,dst=/tmp/reverb" \
-    --mount "type=bind,src=$HOME/.gitconfig,dst=/etc/gitconfig,ro" \
-    --name reverb tensorflow:reverb bash
-  ```
+```shell
+$ docker run --rm -it \
+  --mount "type=bind,src=$REVERB_DIR,dst=/tmp/reverb" \
+  --mount "type=bind,src=$HOME/.gitconfig,dst=/etc/gitconfig,ro" \
+  --name reverb tensorflow:reverb bash
+```
 
 1. Compile Reverb.
 
-  ```shell
-  $ python3.8 configure.py
-  $ bazel build -c opt //reverb/pip_package:build_pip_package
-  ```
+```shell
+$ python3.8 configure.py
+$ bazel build -c opt //reverb/pip_package:build_pip_package
+```
 
 1. Build the .whl file and output it to `/tmp/reverb_build/dist/`.
 
-  ```shell
-  $ ./bazel-bin/reverb/pip_package/build_pip_package \
-    --dst /tmp/reverb_build/dist/
-  ```
+```shell
+$ ./bazel-bin/reverb/pip_package/build_pip_package \
+  --dst /tmp/reverb_build/dist/
+
+$ ./bazel-bin/reverb/pip_package/build_pip_package \
+  --release --dst /tmp/reverb_build/dist/
+```
 
 1. Install the .whl file.
 
-  ```shell
-  # If multiple versions were built, pass the exact wheel to install rather than
-  # *.whl.
-  $ $PYTHON_BIN_PATH -mpip install --upgrade /tmp/reverb_build/dist/*.whl
-  ```
+```shell
+# If multiple versions were built, pass the exact wheel to install rather than
+# *.whl.
+$ $PYTHON_BIN_PATH -mpip install --upgrade /tmp/reverb_build/dist/*.whl
+```
 
 <a id='#builds-tips-and-hints'></a>
 

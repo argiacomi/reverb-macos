@@ -1,0 +1,4 @@
+bazel-*
+*.mp4
+python_bin_path.sh
+.reverb.bazelrc

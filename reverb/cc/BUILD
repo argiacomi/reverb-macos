@@ -338,6 +338,7 @@ reverb_cc_library(
 reverb_cc_test(
     name = "chunker_test",
     srcs = ["chunker_test.cc"],
+    size = "enormous",
     deps = [
         ":chunker",
         ":schema_cc_proto",
